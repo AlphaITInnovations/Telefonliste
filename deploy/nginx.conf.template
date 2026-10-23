@@ -1,0 +1,33 @@
+# Wird beim Container-Start per envsubst mit DIRECTUS_URL / DIRECTUS_TOKEN befüllt.
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Nur lesende Endpunkte durchreichen, die das Frontend braucht
+    location ~ ^/api/(items|assets)/ {
+        limit_except GET { deny all; }
+
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass ${DIRECTUS_URL};
+        proxy_ssl_server_name on;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header Authorization "Bearer ${DIRECTUS_TOKEN}";
+        proxy_set_header Cookie "";
+    }
+
+    location /api/ {
+        return 404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
